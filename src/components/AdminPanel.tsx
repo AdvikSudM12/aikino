@@ -400,13 +400,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           throw error;
         }
         
-        // Обновляем локальное состояние
-        setSpeakers(speakers.filter(speaker => speaker.id !== id));
-        
-        // Обновляем данные из базы для синхронизации с другими клиентами
-        loadSpeakersFromDb();
-        
         console.log('Спикер успешно удален из базы данных');
+        
+        // Сразу загружаем актуальные данные из базы вместо обновления локального состояния
+        // Это обеспечит синхронизацию между всеми браузерами
+        const speakersData = await fetchAllSpeakers();
+        setSpeakers(speakersData || []);
+        
+        console.log(`Обновлены данные спикеров из базы: ${speakersData ? speakersData.length : 0} спикеров`);
       } catch (error) {
         console.error('Ошибка при удалении спикера:', error);
         alert('Ошибка при удалении спикера. Пожалуйста, попробуйте еще раз.');
