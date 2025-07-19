@@ -3,6 +3,8 @@ import { LogOut, Upload, Users, MessageCircle, Trash2, Edit, Camera, Eye, X, Pal
 import { MediaItem, Speaker, SurveyResponse } from '../types';
 import { useStorage, STORAGE_BUCKETS } from '../hooks/useStorage';
 import MigrationTool from './MigrationTool';
+// Импортируем функцию для генерации UUID
+import { v4 as uuidv4 } from 'uuid';
 
 interface AdminPanelProps {
   mediaItems: MediaItem[];
@@ -10,6 +12,7 @@ interface AdminPanelProps {
   speakers: Speaker[];
   setSpeakers: (speakers: Speaker[]) => void;
   surveyResponses: SurveyResponse[];
+  setSurveyResponses: (responses: SurveyResponse[]) => void;
   onLogout: () => void;
 }
 
@@ -19,6 +22,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   speakers,
   setSpeakers,
   surveyResponses,
+  setSurveyResponses,
   onLogout
 }) => {
   const [activeTab, setActiveTab] = useState('media');
@@ -53,55 +57,91 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // Функция для извлечения ID видео из YouTube ссылки
   const extractYoutubeId = (url: string): string | null => {
+    console.log('Проверка YouTube ссылки:', url);
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const match = url.match(regExp);
-    return (match && match[2].length === 11) ? match[2] : null;
+    const result = (match && match[2] && match[2].length === 11) ? match[2] : null;
+    console.log('Извлеченный ID:', result);
+    return result;
   };
 
   // Функция для проверки YouTube ссылок больше не используется, так как мы используем extractYoutubeId
 
   // Обработка добавления ссылки на YouTube видео
   // Используем хук для работы с хранилищем
-  const { uploadFile, deleteFile, listFiles, uploadMultipleFiles } = useStorage();
+  const { uploadFile, deleteFile, listFiles, uploadMultipleFiles, saveMediaMetadata, deleteMediaMetadata, saveSpeaker, fetchAllSpeakers, fetchAllSurveyResponses, progress, isUploading: storageIsUploading } = useStorage();
+  
+  // Синхронизируем прогресс из хука useStorage с локальным состоянием
+  useEffect(() => {
+    setUploadProgress(progress);
+  }, [progress]);
+  
+  // Синхронизируем состояние загрузки из хука useStorage с локальным состоянием
+  useEffect(() => {
+    setIsUploading(storageIsUploading);
+  }, [storageIsUploading]);
 
   const handleAddVideoLink = () => {
-    if (!videoLink.trim()) return;
+    console.log('Нажата кнопка Добавить для YouTube видео');
+    if (!videoLink.trim()) {
+      console.log('Пустая ссылка');
+      return;
+    }
     
+    // Проверяем и извлекаем ID видео
+    const youtubeId = extractYoutubeId(videoLink);
+    if (!youtubeId) {
+      console.error('Неверная ссылка на YouTube видео');
+      alert('Неверная ссылка на YouTube видео');
+      return;
+    }
+    
+    console.log('Извлечен ID видео:', youtubeId);
+    
+    // Показываем индикатор загрузки
     setIsUploading(true);
     setUploadProgress(0);
     
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsUploading(false);
-          setUploadProgress(0);
-          
-          const youtubeId = extractYoutubeId(videoLink);
-          if (!youtubeId) {
-            alert('Неверная ссылка на YouTube видео');
-            return 0;
-          }
-          
-          const mediaItem: MediaItem = {
-            id: Date.now().toString(),
-            name: `YouTube видео ${youtubeId}`,
-            type: 'video',
-            url: videoLink,
-            thumbnail: `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`,
-            uploadDate: new Date().toISOString(),
-            isYouTube: true,
-            youtubeId: youtubeId
-            // Для YouTube видео не нужны storagePath и storageBucket
-          };
-          
+    // Создаем объект медиафайла
+    const mediaItem: MediaItem = {
+      id: uuidv4(), // Используем UUID вместо временной метки
+      name: `YouTube видео ${youtubeId}`,
+      type: 'video',
+      url: videoLink,
+      thumbnail: `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`,
+      uploadDate: new Date().toISOString(),
+      isYouTube: true,
+      youtubeId: youtubeId
+      // Для YouTube видео не нужны storagePath и storageBucket
+    };
+    
+    console.log('Создан объект медиафайла:', mediaItem);
+    
+    // Сохраняем метаданные YouTube видео в Supabase
+    saveMediaMetadata(mediaItem)
+      .then(savedData => {
+        console.log('Ответ от saveMediaMetadata:', savedData);
+        if (savedData) {
+          // Если сохранение в базу прошло успешно, добавляем в список
+          setMediaItems([...mediaItems, savedData as MediaItem]);
+        } else {
+          // Если не удалось сохранить в базу, добавляем только в локальное состояние
+          console.warn('Не удалось сохранить метаданные YouTube видео в базу данных');
           setMediaItems([...mediaItems, mediaItem]);
-          setVideoLink('');
-          return 0;
         }
-        return prev + 10;
+        // Сбрасываем состояние
+        setVideoLink('');
+        setIsUploading(false);
+        setUploadProgress(0);
+      })
+      .catch(error => {
+        console.error('Ошибка при сохранении YouTube видео:', error);
+        // В случае ошибки добавляем только в локальное состояние
+        setMediaItems([...mediaItems, mediaItem]);
+        setVideoLink('');
+        setIsUploading(false);
+        setUploadProgress(0);
       });
-    }, 200);
   };
 
   const handleFileUpload = async (files: FileList | null) => {
@@ -157,9 +197,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         const uploadResults = await uploadMultipleFiles(typeFiles, bucket);
         
         // Создаем медиа-элементы из результатов загрузки
-        uploadResults.forEach((fileData, index) => {
+        for (let index = 0; index < uploadResults.length; index++) {
+          const fileData = uploadResults[index];
           const mediaItem: MediaItem = {
-            id: `${Date.now()}-${index}`,
+            id: uuidv4(), // Используем UUID вместо временной метки
             name: typeFiles[index].name,
             type: fileType as MediaItem['type'],
             url: fileData.url,
@@ -170,8 +211,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             storageBucket: bucket
           };
           
-          newMediaItems.push(mediaItem);
-        });
+          // Сохраняем метаданные в Supabase Database
+          try {
+            const savedData = await saveMediaMetadata(mediaItem);
+            if (savedData) {
+              // Если сохранение в базу прошло успешно, добавляем в список
+              newMediaItems.push(mediaItem);
+            } else {
+              console.error(`Не удалось сохранить метаданные для ${mediaItem.name} в базу данных`);
+            }
+          } catch (err) {
+            console.error(`Ошибка при сохранении метаданных для ${mediaItem.name}:`, err);
+            // Даже если сохранение метаданных не удалось, добавляем файл в список
+            // чтобы пользователь мог видеть загруженный файл
+            newMediaItems.push(mediaItem);
+          }
+        }
       }
       
       // Добавляем все загруженные файлы в состояние
@@ -221,55 +276,141 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleDeleteMedia = async (id: string) => {
-    const mediaItem = mediaItems.find(item => item.id === id);
-    
-    if (mediaItem) {
-      // Если это YouTube видео или нет данных о хранилище, просто удаляем из списка
-      if (mediaItem.isYouTube || !mediaItem.storagePath || !mediaItem.storageBucket) {
-        setMediaItems(mediaItems.filter(item => item.id !== id));
-        return;
-      }
-      
+    if (window.confirm('Вы уверены, что хотите удалить этот файл?')) {
       try {
-        // Удаляем файл из Supabase Storage
-        const deleted = await deleteFile(mediaItem.storagePath, mediaItem.storageBucket);
+        const mediaItem = mediaItems.find(item => item.id === id);
         
-        if (!deleted) {
-          throw new Error('Не удалось удалить файл из хранилища');
+        if (!mediaItem) {
+          console.error('Медиафайл не найден:', id);
+          return;
         }
         
-        setMediaItems(mediaItems.filter(item => item.id !== id));
+        setIsUploading(true);
+        
+        // Определяем бакет на основе типа медиа
+        let bucket = '';
+        switch (mediaItem.type) {
+          case 'photo':
+            bucket = STORAGE_BUCKETS.PHOTOS;
+            break;
+          case 'video':
+            bucket = STORAGE_BUCKETS.VIDEOS;
+            break;
+          case 'presentation':
+            bucket = STORAGE_BUCKETS.PRESENTATIONS;
+            break;
+          default:
+            console.error('Неизвестный тип медиа:', mediaItem.type);
+            setIsUploading(false);
+            return;
+        }
+        
+        // Если это YouTube видео, нам не нужно удалять файл из хранилища
+        let fileDeleted = true;
+        if (mediaItem.type === 'video' && mediaItem.youtubeId) {
+          console.log('YouTube видео не требует удаления файла из хранилища');
+        } else if (mediaItem.storagePath) {
+          // Удаляем файл из хранилища
+          fileDeleted = await deleteFile(mediaItem.storagePath, bucket);
+        }
+        
+        if (fileDeleted) {
+          // Удаляем метаданные из базы данных
+          const metadataDeleted = await deleteMediaMetadata(id);
+          
+          if (metadataDeleted) {
+            // Обновляем локальное состояние
+            setMediaItems(mediaItems.filter(item => item.id !== id));
+            console.log('Медиафайл успешно удален');
+            
+            // Обновляем данные из базы для синхронизации с другими клиентами
+            loadMediaMetadataFromDb();
+          } else {
+            console.error('Не удалось удалить метаданные из базы данных');
+            alert('Ошибка при удалении метаданных. Файл был удален из хранилища, но метаданные остались в базе.');
+          }
+        } else {
+          console.error('Не удалось удалить файл из хранилища');
+          alert('Ошибка при удалении файла из хранилища. Пожалуйста, попробуйте еще раз.');
+        }
       } catch (error) {
-        console.error('Ошибка удаления файла:', error);
-        alert('Произошла ошибка при удалении файла, но запись будет удалена из списка.');
-        setMediaItems(mediaItems.filter(item => item.id !== id));
+        console.error('Ошибка при удалении медиафайла:', error);
+        alert('Ошибка при удалении медиафайла. Пожалуйста, попробуйте еще раз.');
+      } finally {
+        setIsUploading(false);
       }
     }
   };
 
-  const handleSaveSpeaker = (speaker: Omit<Speaker, 'id'>) => {
-    if (editingSpeaker && editingSpeaker.id && editingSpeaker.id !== '') {
-      setSpeakers(speakers.map(s => s.id === editingSpeaker.id ? { ...speaker, id: editingSpeaker.id } : s));
-    } else {
-      setSpeakers([...speakers, { ...speaker, id: Date.now().toString() }]);
+  const handleSaveSpeaker = async (speaker: Omit<Speaker, 'id'>) => {
+    try {
+      let speakerToSave: Speaker;
+      
+      if (editingSpeaker && editingSpeaker.id && editingSpeaker.id !== '') {
+        // Обновление существующего спикера
+        speakerToSave = { ...speaker, id: editingSpeaker.id };
+      } else {
+        // Создание нового спикера с UUID
+        const uuid = crypto.randomUUID();
+        speakerToSave = { ...speaker, id: uuid };
+      }
+      
+      console.log('Сохраняем спикера в Supabase:', speakerToSave);
+      
+      // Сохраняем в Supabase
+      const savedSpeaker = await saveSpeaker(speakerToSave);
+      
+      if (savedSpeaker) {
+        console.log('Спикер успешно сохранен в Supabase:', savedSpeaker);
+        
+        // Обновляем локальное состояние только после успешного сохранения в базу
+        if (editingSpeaker && editingSpeaker.id && editingSpeaker.id !== '') {
+          setSpeakers(speakers.map(s => s.id === editingSpeaker.id ? { ...savedSpeaker, description: savedSpeaker.bio } : s));
+        } else {
+          setSpeakers([...speakers, { ...speakerToSave }]);
+        }
+        
+        setEditingSpeaker(null);
+        
+        // Обновляем данные из базы для синхронизации с другими клиентами
+        loadSpeakersFromDb();
+      } else {
+        console.error('Не удалось сохранить спикера в Supabase');
+        alert('Ошибка при сохранении спикера. Пожалуйста, попробуйте еще раз.');
+      }
+    } catch (error) {
+      console.error('Ошибка при сохранении спикера:', error);
+      alert('Ошибка при сохранении спикера. Пожалуйста, попробуйте еще раз.');
     }
-    setEditingSpeaker(null);
   };
 
   const handleDeleteSpeaker = async (id: string) => {
-    const speaker = speakers.find(s => s.id === id);
-    
-    if (speaker) {
-      // Если есть данные о хранилище, удаляем фото из Supabase Storage
-      if (speaker.photoStoragePath && speaker.photoStorageBucket) {
-        try {
-          await deleteFile(speaker.photoStoragePath, speaker.photoStorageBucket);
-        } catch (error) {
-          console.error('Ошибка удаления фото спикера:', error);
+    if (window.confirm('Вы уверены, что хотите удалить этого спикера?')) {
+      try {
+        // Импортируем клиент Supabase
+        const { supabase } = await import('../lib/supabase');
+        
+        // Удаляем спикера из базы данных
+        const { error } = await supabase
+          .from('speakers')
+          .delete()
+          .eq('id', id);
+          
+        if (error) {
+          throw error;
         }
+        
+        // Обновляем локальное состояние
+        setSpeakers(speakers.filter(speaker => speaker.id !== id));
+        
+        // Обновляем данные из базы для синхронизации с другими клиентами
+        loadSpeakersFromDb();
+        
+        console.log('Спикер успешно удален из базы данных');
+      } catch (error) {
+        console.error('Ошибка при удалении спикера:', error);
+        alert('Ошибка при удалении спикера. Пожалуйста, попробуйте еще раз.');
       }
-      
-      setSpeakers(speakers.filter(s => s.id !== id));
     }
   };
 
@@ -409,8 +550,98 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const stats = getMediaTypeStats();
 
-  // Загрузка списка файлов из бакетов при первом рендере
+  // Функция для загрузки метаданных медиафайлов из Supabase
+  const loadMediaMetadataFromDb = async () => {
+    try {
+      // Импортируем клиент Supabase
+      const { supabase } = await import('../lib/supabase');
+      
+      // Получаем метаданные из таблицы media_items
+      const { data, error } = await supabase
+        .from('media_items')
+        .select('*');
+        
+      if (error) {
+        throw error;
+      }
+      
+      if (data) {
+        // Проверяем, отличаются ли данные из базы от текущего состояния
+        const needsUpdate = JSON.stringify(data.sort((a, b) => a.id.localeCompare(b.id))) !== 
+                            JSON.stringify(mediaItems.sort((a, b) => a.id.localeCompare(b.id)));
+        
+        if (needsUpdate) {
+          console.log('Обновляем состояние медиафайлов из базы данных');
+          setMediaItems(data);
+        }
+        
+        console.log('Загружены метаданные из базы данных:', {
+          всего: data.length,
+          photos: data.filter(item => item.type === 'photo').length,
+          videos: data.filter(item => item.type === 'video').length,
+          presentations: data.filter(item => item.type === 'presentation').length
+        });
+      } else {
+        console.log('В базе данных нет метаданных медиафайлов');
+      }
+    } catch (error) {
+      console.error('Ошибка при загрузке метаданных из базы данных:', error);
+    }
+  };
+  
+  // Функция для загрузки спикеров из Supabase
+  const loadSpeakersFromDb = async () => {
+    try {
+      const speakersData = await fetchAllSpeakers();
+      
+      if (speakersData && speakersData.length > 0) {
+        // Проверяем, отличаются ли данные из базы от текущего состояния
+        const needsUpdate = JSON.stringify(speakersData.sort((a, b) => a.id.localeCompare(b.id))) !== 
+                            JSON.stringify(speakers.sort((a, b) => a.id.localeCompare(b.id)));
+        
+        if (needsUpdate) {
+          console.log('Обновляем состояние спикеров из базы данных');
+          setSpeakers(speakersData);
+        }
+        
+        console.log(`Загружены спикеры из базы данных: ${speakersData.length}`);
+      } else {
+        console.log('В базе данных нет спикеров');
+      }
+    } catch (error) {
+      console.error('Ошибка при загрузке спикеров из базы данных:', error);
+    }
+  };
+  
+  // Функция для загрузки ответов на опросы из Supabase
+  const loadSurveyResponsesFromDb = async () => {
+    try {
+      const surveyData = await fetchAllSurveyResponses();
+      
+      if (surveyData && surveyData.length > 0) {
+        // Проверяем, отличаются ли данные из базы от текущего состояния
+        const needsUpdate = JSON.stringify(surveyData.sort((a, b) => a.id.localeCompare(b.id))) !== 
+                            JSON.stringify(surveyResponses.sort((a, b) => a.id.localeCompare(b.id)));
+        
+        if (needsUpdate) {
+          console.log('Обновляем состояние опросов из базы данных');
+          setSurveyResponses(surveyData);
+        }
+        
+        console.log(`Загружены ответы на опросы из базы данных: ${surveyData.length}`);
+      } else {
+        console.log('В базе данных нет ответов на опросы');
+      }
+    } catch (error) {
+      console.error('Ошибка при загрузке ответов на опросы из базы данных:', error);
+    }
+  };
+
+  // Загрузка списка файлов из бакетов и метаданных из базы данных при первом рендере
   useEffect(() => {
+    // Флаг для предотвращения бесконечного цикла
+    let isMounted = true;
+    
     const loadStorageFiles = async () => {
       try {
         // Загружаем список файлов из всех бакетов
@@ -418,18 +649,56 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         const videoFiles = await listFiles(STORAGE_BUCKETS.VIDEOS);
         const presentationFiles = await listFiles(STORAGE_BUCKETS.PRESENTATIONS);
         
-        console.log('Загружены метаданные файлов:', {
-          photos: photoFiles.length,
-          videos: videoFiles.length,
-          presentations: presentationFiles.length
-        });
+        if (isMounted) {
+          console.log('Загружены файлы из хранилища:', {
+            photos: photoFiles.length,
+            videos: videoFiles.length,
+            presentations: presentationFiles.length
+          });
+        }
       } catch (error) {
-        console.error('Ошибка при загрузке списка файлов:', error);
+        if (isMounted) {
+          console.error('Ошибка при загрузке списка файлов из хранилища:', error);
+        }
       }
     };
     
-    loadStorageFiles();
-  }, [listFiles]);
+    // Используем функцию loadMediaMetadataFromDb, определенную на уровне компонента
+    
+    // Используем функцию loadSpeakersFromDb, определенную на уровне компонента
+    
+    // Используем функцию loadSurveyResponsesFromDb, определенную на уровне компонента
+    
+    // Функция для синхронизации всех данных с Supabase
+    const syncAllData = async () => {
+      if (isMounted) {
+        console.log('Синхронизация данных с Supabase...');
+        await Promise.all([
+          loadStorageFiles(),
+          loadMediaMetadataFromDb(),
+          loadSpeakersFromDb(),
+          loadSurveyResponsesFromDb()
+        ]);
+      }
+    };
+    
+    // Первоначальная загрузка данных
+    syncAllData();
+    
+    // Настраиваем периодическую синхронизацию данных (каждые 30 секунд)
+    const syncInterval = window.setInterval(() => {
+      syncAllData();
+    }, 30000);
+    
+    // Очистка при размонтировании компонента
+    return () => {
+      isMounted = false;
+      if (syncInterval) {
+        clearInterval(syncInterval);
+      }
+    };
+  // Используем пустой массив зависимостей, чтобы эффект выполнялся только при первом рендере
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-900 text-white">
@@ -1182,8 +1451,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <MigrationTool 
                     mediaItems={mediaItems}
                     speakers={speakers}
+                    surveyResponses={surveyResponses}
                     setMediaItems={setMediaItems}
                     setSpeakers={setSpeakers}
+                    setSurveyResponses={setSurveyResponses}
                   />
                 </div>
               </div>

@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
-import { CheckCircle, Send } from 'lucide-react';
+import { CheckCircle, Send, AlertCircle, Loader } from 'lucide-react';
 import { SurveyResponse } from '../types';
+import { useStorage } from '../hooks/useStorage';
 
 interface SurveySectionProps {
   onSubmit: (response: Omit<SurveyResponse, 'id'>) => void;
 }
 
 export const SurveySection: React.FC<SurveySectionProps> = ({ onSubmit }) => {
+  const { saveSurveyResponse, isLoading, error } = useStorage();
   const [formData, setFormData] = useState({
     fullName: '',
     contacts: '',
     occupation: '',
-    materialUseful: '',
-    recommendation: '',
-    aiExperience: '',
+    materialUseful: 'unknown' as 'yes' | 'no' | 'unknown',
+    recommendation: 'unknown' as 'definitely' | 'probably' | 'unknown' | 'probably-not' | 'definitely-not',
+    aiExperience: 'nothing' as 'nothing' | 'reading' | 'team-using',
     companyName: '',
     missingInfo: {
       enough: false,
@@ -37,19 +39,50 @@ export const SurveySection: React.FC<SurveySectionProps> = ({ onSubmit }) => {
 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitError(null);
 
-    setTimeout(() => {
-      onSubmit({
+    try {
+      const surveyData = {
         ...formData,
         submittedAt: new Date().toISOString()
-      });
-      setIsSubmitted(true);
+      };
+      
+      // Сохраняем в Supabase и вызываем onSubmit для обратной совместимости
+      // Добавляем пустой id, который будет заменен на реальный в Supabase
+      const surveyWithId: SurveyResponse = {
+        id: '',
+        fullName: surveyData.fullName,
+        contacts: surveyData.contacts,
+        occupation: surveyData.occupation,
+        materialUseful: surveyData.materialUseful as 'yes' | 'no' | 'unknown',
+        recommendation: surveyData.recommendation as 'definitely' | 'probably' | 'unknown' | 'probably-not' | 'definitely-not',
+        aiExperience: surveyData.aiExperience as 'nothing' | 'reading' | 'team-using',
+        companyName: surveyData.companyName,
+        missingInfo: surveyData.missingInfo,
+        aiServices: surveyData.aiServices,
+        obstacles: surveyData.obstacles,
+        comments: surveyData.comments,
+        submittedAt: surveyData.submittedAt
+      };
+      const result = await saveSurveyResponse(surveyWithId);
+      
+      if (result) {
+        onSubmit(surveyData);
+        setIsSubmitted(true);
+      } else {
+        setSubmitError('Не удалось отправить данные. Пожалуйста, попробуйте еще раз.');
+      }
+    } catch (err) {
+      console.error('Ошибка при отправке опроса:', err);
+      setSubmitError(err instanceof Error ? err.message : 'Неизвестная ошибка при отправке');
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
 
   const handleInputChange = (field: string, value: any) => {
@@ -60,13 +93,20 @@ export const SurveySection: React.FC<SurveySectionProps> = ({ onSubmit }) => {
   };
 
   const handleNestedChange = (parent: string, field: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [parent]: {
-        ...prev[parent as keyof typeof prev],
-        [field]: value
-      }
-    }));
+    setFormData(prev => {
+      // Получаем текущее значение родительского объекта
+      const parentValue = prev[parent as keyof typeof prev] || {};
+      
+      // Проверяем, что родительское значение является объектом
+      const updatedParent = typeof parentValue === 'object' && parentValue !== null
+        ? { ...parentValue, [field]: value }
+        : { [field]: value };
+      
+      return {
+        ...prev,
+        [parent]: updatedParent
+      };
+    });
   };
 
   if (isSubmitted) {
@@ -356,13 +396,37 @@ export const SurveySection: React.FC<SurveySectionProps> = ({ onSubmit }) => {
           </div>
 
           <div className="text-center">
+            {submitError && (
+              <div className="bg-red-900/20 border-l-4 border-red-500 text-red-300 p-4 mb-4 rounded-r-lg">
+                <div className="flex items-center">
+                  <AlertCircle className="w-5 h-5 mr-2" />
+                  <p className="font-medium">Ошибка при отправке</p>
+                </div>
+                <p className="text-sm mt-1">{submitError}</p>
+              </div>
+            )}
+            
+            {error && (
+              <div className="bg-red-900/20 border-l-4 border-red-500 text-red-300 p-4 mb-4 rounded-r-lg">
+                <div className="flex items-center">
+                  <AlertCircle className="w-5 h-5 mr-2" />
+                  <p className="font-medium">Ошибка</p>
+                </div>
+                <p className="text-sm mt-1">{error}</p>
+              </div>
+            )}
+            
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLoading}
               className="px-8 py-4 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-semibold text-white transition-all border border-slate-700 flex items-center space-x-2 mx-auto"
             >
-              <Send className="w-5 h-5" />
-              <span>{isSubmitting ? 'Отправляем...' : 'Отправить'}</span>
+              {isSubmitting || isLoading ? (
+                <Loader className="w-5 h-5 animate-spin" />
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
+              <span>{isSubmitting || isLoading ? 'Отправляем...' : 'Отправить'}</span>
             </button>
           </div>
         </form>

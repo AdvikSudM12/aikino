@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Speaker } from '../types';
-import { Camera, Film, Star, Award } from 'lucide-react';
+import { Camera, Star, Award, Loader } from 'lucide-react';
+import { useStorage } from '../hooks/useStorage';
 
 interface SpeakersSectionProps {
   speakers: Speaker[];
@@ -82,7 +83,7 @@ const parseMarkdown = (text: string): JSX.Element => {
 };
 
 // Render custom block
-const renderCustomBlock = (text: string, colorName: string, key: number): JSX.Element => {
+const renderCustomBlock = (text: string, _colorName: string, key: number): JSX.Element => {
   return (
     <div 
       key={key}
@@ -112,7 +113,26 @@ const processColorTags = (text: string): string => {
   return processedText;
 };
 
-export const SpeakersSection: React.FC<SpeakersSectionProps> = ({ speakers }) => {
+export const SpeakersSection: React.FC<SpeakersSectionProps> = ({ speakers: speakersFromProps }) => {
+  const { fetchAllSpeakers, isLoading, error } = useStorage();
+  const [localSpeakers, setLocalSpeakers] = useState<Speaker[]>(speakersFromProps);
+
+  useEffect(() => {
+    const loadSpeakers = async () => {
+      try {
+        const speakersData = await fetchAllSpeakers();
+        if (speakersData && speakersData.length > 0) {
+          setLocalSpeakers(speakersData);
+        }
+      } catch (err) {
+        console.error('Ошибка при загрузке спикеров:', err);
+      }
+    };
+    
+    loadSpeakers();
+    // Убираем fetchAllSpeakers из зависимостей, чтобы избежать бесконечного цикла
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <section id="speakers" className="py-20 px-6 bg-slate-900 relative">
       {/* Film reel decorative elements */}
@@ -142,9 +162,23 @@ export const SpeakersSection: React.FC<SpeakersSectionProps> = ({ speakers }) =>
           <p className="text-slate-400 text-lg max-w-2xl mx-auto">
             Профессиональные биографии и опыт ведущих специалистов в области ИИ и автоматизации бизнес процессов
           </p>
+        
+          {isLoading && (
+            <div className="flex justify-center items-center mt-4">
+              <Loader className="w-6 h-6 text-slate-400 animate-spin" />
+              <span className="ml-2 text-slate-400">Загрузка спикеров...</span>
+            </div>
+          )}
+        
+          {error && (
+            <div className="bg-red-900/20 border-l-4 border-red-500 text-red-300 p-4 mt-4 rounded-r-lg">
+              <p className="font-medium">Ошибка при загрузке спикеров</p>
+              <p className="text-sm">{error}</p>
+            </div>
+          )}
         </div>
 
-        {speakers.length === 0 ? (
+        {!isLoading && !error && localSpeakers.length === 0 ? (
           <div className="text-center py-20">
             <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-slate-700">
               <div className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center">
@@ -155,7 +189,7 @@ export const SpeakersSection: React.FC<SpeakersSectionProps> = ({ speakers }) =>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {speakers.map((speaker, index) => (
+            {!isLoading && !error && localSpeakers.map((speaker) => (
               <div
                 key={speaker.id}
                 className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden"

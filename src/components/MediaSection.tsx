@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Video, Camera, FileText, X, Film, Clapperboard, Download, Play } from 'lucide-react';
 import { MediaItem } from '../types';
+import { useStorage } from '../hooks/useStorage';
 
 interface MediaSectionProps {
   mediaItems: MediaItem[];
@@ -13,15 +14,73 @@ const extractYoutubeId = (url: string): string | null => {
   return (match && match[2].length === 11) ? match[2] : null;
 };
 
-export const MediaSection: React.FC<MediaSectionProps> = ({ mediaItems }) => {
+export const MediaSection: React.FC<MediaSectionProps> = ({ mediaItems: propMediaItems }) => {
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
   const [activeTab, setActiveTab] = useState<'photo' | 'video' | 'presentation'>('photo');
   const [selectedMediaIndex, setSelectedMediaIndex] = useState<number>(0);
+  const [localMediaItems, setLocalMediaItems] = useState<MediaItem[]>(propMediaItems);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Используем хук для работы с хранилищем
+  const { fetchAllMedia } = useStorage();
+  
+  // Загрузка медиафайлов из Supabase Database
+  useEffect(() => {
+    const loadMediaFromSupabase = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        // Загружаем данные из Supabase Database
+        const mediaFromSupabase = await fetchAllMedia();
+        
+        if (mediaFromSupabase && mediaFromSupabase.length > 0) {
+          // Если есть данные в Supabase, используем их
+          setLocalMediaItems(mediaFromSupabase);
+        } else {
+          // Иначе используем данные из пропсов
+          setLocalMediaItems(propMediaItems);
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Неизвестная ошибка';
+        console.error('Ошибка при загрузке медиафайлов из Supabase:', errorMessage);
+        setError(errorMessage);
+        // В случае ошибки используем данные из пропсов
+        setLocalMediaItems(propMediaItems);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadMediaFromSupabase();
+    // Убираем fetchAllMedia из зависимостей, чтобы избежать бесконечного цикла
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propMediaItems]);
   
   // Обработка YouTube ссылок в медиа-элементах
   useEffect(() => {
-    const processedItems = mediaItems.map(item => {
-      if (item.type === 'video' && item.url.includes('youtube.com') || item.url.includes('youtu.be')) {
+    // Проверяем, есть ли необработанные YouTube видео
+    const hasUnprocessedYouTube = localMediaItems.some(
+      item => item.type === 'video' && 
+      (item.url.includes('youtube.com') || item.url.includes('youtu.be')) && 
+      !item.isYouTube
+    );
+    
+    // Если нет необработанных YouTube видео, не делаем ничего
+    if (!hasUnprocessedYouTube) {
+      // Только обновляем выбранное медиа, если нужно
+      if (selectedMedia) {
+        const updatedMedia = localMediaItems.find((item: MediaItem) => item.id === selectedMedia.id);
+        if (updatedMedia && updatedMedia !== selectedMedia) {
+          setSelectedMedia(updatedMedia);
+        }
+      }
+      return;
+    }
+    
+    const processedItems = localMediaItems.map((item: MediaItem) => {
+      if (item.type === 'video' && (item.url.includes('youtube.com') || item.url.includes('youtu.be')) && !item.isYouTube) {
         const youtubeId = extractYoutubeId(item.url);
         if (youtubeId) {
           return {
@@ -35,14 +94,20 @@ export const MediaSection: React.FC<MediaSectionProps> = ({ mediaItems }) => {
       return item;
     });
     
+    // Обновляем локальные медиафайлы с обработанными YouTube ссылками
+    setLocalMediaItems(processedItems);
+    
     // Если выбрано медиа, обновляем его данные
     if (selectedMedia) {
-      const updatedMedia = processedItems.find(item => item.id === selectedMedia.id);
+      const updatedMedia = processedItems.find((item: MediaItem) => item.id === selectedMedia.id);
       if (updatedMedia && updatedMedia !== selectedMedia) {
         setSelectedMedia(updatedMedia);
       }
     }
-  }, [mediaItems]);
+  // Убираем localMediaItems из зависимостей, чтобы избежать бесконечного цикла
+  // Эффект будет запускаться только при изменении selectedMedia или при начальной загрузке
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMedia]);
 
   const tabs = [
     { id: 'photo' as const, label: 'КАДРЫ', icon: Camera },
@@ -51,15 +116,15 @@ export const MediaSection: React.FC<MediaSectionProps> = ({ mediaItems }) => {
   ];
 
   // Предварительно загружаем все фотографии независимо от активной вкладки
-  const photoItems = mediaItems.filter(item => item.type === 'photo');
+  const photoItems = localMediaItems.filter((item: MediaItem) => item.type === 'photo');
   
   // Фильтруем элементы для текущей вкладки
-  const filteredItems = mediaItems.filter(item => item.type === activeTab);
+  const filteredItems = localMediaItems.filter((item: MediaItem) => item.type === activeTab);
   
   // Предзагрузка всех фотографий
   useEffect(() => {
     // Создаем невидимые элементы img для предзагрузки фотографий
-    photoItems.forEach(item => {
+    photoItems.forEach((item: MediaItem) => {
       if (item.url) {
         const img = new Image();
         img.src = item.url;
@@ -105,7 +170,7 @@ export const MediaSection: React.FC<MediaSectionProps> = ({ mediaItems }) => {
   };
 
   const navigateMedia = (direction: 'prev' | 'next') => {
-    const mediaOfSameType = mediaItems.filter(item => item.type === activeTab);
+    const mediaOfSameType = localMediaItems.filter((item: MediaItem) => item.type === activeTab);
     if (mediaOfSameType.length <= 1) return;
     
     let newIndex;
@@ -115,8 +180,8 @@ export const MediaSection: React.FC<MediaSectionProps> = ({ mediaItems }) => {
       newIndex = selectedMediaIndex >= mediaOfSameType.length - 1 ? 0 : selectedMediaIndex + 1;
     }
     
-    setSelectedMediaIndex(newIndex);
     setSelectedMedia(mediaOfSameType[newIndex]);
+    setSelectedMediaIndex(newIndex);
   };
   
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -183,14 +248,33 @@ export const MediaSection: React.FC<MediaSectionProps> = ({ mediaItems }) => {
                 <Icon className="w-5 h-5" />
                 <span className="text-sm tracking-wider">{tab.label}</span>
                 <span className="text-xs px-2 py-1 bg-slate-700 rounded-full">
-                  {mediaItems.filter(item => item.type === tab.id).length}
+                  {localMediaItems.filter((item: MediaItem) => item.type === tab.id).length}
                 </span>
               </button>
             );
           })}
         </div>
 
-        {filteredItems.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-20">
+            <div className="w-16 h-16 bg-slate-800 rounded-lg flex items-center justify-center mx-auto mb-6 border border-slate-700">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+            <p className="text-slate-500 text-lg uppercase tracking-wider">
+              Загрузка медиафайлов...
+            </p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-20">
+            <div className="w-16 h-16 bg-slate-800 rounded-lg flex items-center justify-center mx-auto mb-6 border border-slate-700 text-red-500">
+              <X className="w-8 h-8" />
+            </div>
+            <p className="text-red-400 text-lg uppercase tracking-wider">
+              Ошибка загрузки
+            </p>
+            <p className="text-slate-400 mt-2">{error}</p>
+          </div>
+        ) : filteredItems.length === 0 ? (
           <div className="text-center py-20">
             <div className="w-16 h-16 bg-slate-800 rounded-lg flex items-center justify-center mx-auto mb-6 border border-slate-700">
               {activeTab === 'video' && <Video className="w-8 h-8 text-slate-500" />}

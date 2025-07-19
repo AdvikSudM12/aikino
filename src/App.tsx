@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { MediaSection } from './components/MediaSection';
@@ -21,7 +21,11 @@ function App() {
   const [surveyResponses, setSurveyResponses] = useLocalStorage<SurveyResponse[]>('survey-responses', []);
 
   const handleAdminLogin = () => {
-    setShowAuthModal(true);
+    // Временно пропускаем авторизацию и сразу входим в админ-панель
+    const credentials = { username: 'EMDLabs', password: 'EMD2025' };
+    login(credentials);
+    setShowAdminPanel(true);
+    // setShowAuthModal(true); // Закомментировано для пропуска авторизации
   };
 
   const handleAuthSuccess = (credentials: { username: string; password: string }) => {
@@ -72,6 +76,7 @@ function App() {
         speakers={speakers}
         setSpeakers={setSpeakers}
         surveyResponses={surveyResponses}
+        setSurveyResponses={setSurveyResponses}
         onLogout={handleAdminLogout}
       />
     );
