@@ -582,16 +582,28 @@ export const useStorage = () => {
         comments: response.comments
       };
       
+      // Адаптируем данные под структуру таблицы в базе данных
+      // Создаем объект для вставки, не включая пустой id
+      const insertData = {
+        name: response.fullName || '',            // исправлено: full_name -> name
+        email: response.contacts || '',           // исправлено: contacts -> email
+        message: response.comments || '',         // добавлено поле message
+        organization: response.companyName || '', // добавлено поле organization
+        phone: '',                               // добавлено пустое поле phone
+        answers: answersData,                    // оставляем как есть
+        metadata: { occupation: response.occupation || '' }, // переносим occupation в metadata
+        status: 'new',                           // добавляем статус по умолчанию
+        created_at: response.submittedAt         // исправлено: submitted_at -> created_at
+      };
+      
+      // Если в response.id есть валидный UUID, добавляем его
+      if (response.id && response.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+        (insertData as any).id = response.id;
+      }
+      
       const { data, error } = await supabase
         .from('survey_responses')
-        .insert([{
-          id: response.id,
-          full_name: response.fullName,
-          contacts: response.contacts,
-          occupation: response.occupation,
-          answers: answersData,
-          submitted_at: response.submittedAt
-        }])
+        .insert([insertData])
         .select()
         .single();
       
@@ -617,31 +629,36 @@ export const useStorage = () => {
       setError(null);
       setIsLoading(true);
       
+      console.log('Загружаем актуальные данные опросов из базы данных...');
+      
       const { data, error } = await supabase
         .from('survey_responses')
         .select('*')
-        .order('submitted_at', { ascending: false });
+        .order('created_at', { ascending: false }); // исправлено: submitted_at -> created_at
       
       if (error) throw error;
+      
+      console.log('Получены данные из базы:', data);
       
       // Преобразование данных из формата Supabase в формат SurveyResponse
       return data.map((item: any) => {
         const answers = item.answers || {};
+        const metadata = item.metadata || {};
         
         return {
           id: item.id,
-          fullName: item.full_name,
-          contacts: item.contacts,
-          occupation: item.occupation,
+          fullName: item.name || '',                // исправлено: full_name -> name
+          contacts: item.email || '',               // исправлено: contacts -> email
+          occupation: metadata.occupation || '',    // исправлено: occupation -> metadata.occupation
           materialUseful: answers.material_useful,
           recommendation: answers.recommendation,
           aiExperience: answers.ai_experience,
-          companyName: answers.company_name,
+          companyName: answers.company_name || item.organization || '', // добавлена поддержка поля organization
           missingInfo: answers.missing_info,
           aiServices: answers.ai_services,
           obstacles: answers.obstacles,
-          comments: answers.comments,
-          submittedAt: item.submitted_at
+          comments: answers.comments || item.message || '', // добавлена поддержка поля message
+          submittedAt: item.created_at              // исправлено: submitted_at -> created_at
         };
       });
     } catch (err) {

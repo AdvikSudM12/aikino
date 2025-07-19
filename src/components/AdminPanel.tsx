@@ -615,21 +615,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Функция для загрузки ответов на опросы из Supabase
   const loadSurveyResponsesFromDb = async () => {
     try {
+      console.log('Загружаем актуальные данные опросов из базы данных...');
       const surveyData = await fetchAllSurveyResponses();
       
+      // Всегда обновляем состояние из базы данных для обеспечения синхронизации между браузерами
+      setSurveyResponses(surveyData || []);
+      
       if (surveyData && surveyData.length > 0) {
-        // Проверяем, отличаются ли данные из базы от текущего состояния
-        const needsUpdate = JSON.stringify(surveyData.sort((a, b) => a.id.localeCompare(b.id))) !== 
-                            JSON.stringify(surveyResponses.sort((a, b) => a.id.localeCompare(b.id)));
-        
-        if (needsUpdate) {
-          console.log('Обновляем состояние опросов из базы данных');
-          setSurveyResponses(surveyData);
-        }
-        
         console.log(`Загружены ответы на опросы из базы данных: ${surveyData.length}`);
       } else {
         console.log('В базе данных нет ответов на опросы');
+        if (surveyResponses.length > 0) {
+          console.log('Очищаем локальное состояние опросов');
+        }
       }
     } catch (error) {
       console.error('Ошибка при загрузке ответов на опросы из базы данных:', error);
