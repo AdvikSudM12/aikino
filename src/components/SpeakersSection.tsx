@@ -134,32 +134,32 @@ export const SpeakersSection: React.FC<SpeakersSectionProps> = ({ speakers: spea
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
-    <section id="speakers" className="py-20 px-6 bg-slate-900 relative">
-      {/* Film reel decorative elements */}
-      <div className="absolute top-10 left-10 w-12 h-12 border-4 border-slate-700 rounded-full opacity-20">
+    <section id="speakers" className="py-12 sm:py-20 px-4 sm:px-6 bg-slate-900 relative">
+      {/* Film reel decorative elements - скрываем на маленьких экранах */}
+      <div className="absolute top-10 left-6 sm:left-10 w-8 sm:w-12 h-8 sm:h-12 border-2 sm:border-4 border-slate-700 rounded-full opacity-20 hidden sm:block">
         <div className="w-full h-full bg-slate-800 rounded-full flex items-center justify-center">
-          <div className="w-2 h-2 bg-slate-600 rounded-full"></div>
+          <div className="w-1 sm:w-2 h-1 sm:h-2 bg-slate-600 rounded-full"></div>
         </div>
       </div>
-      <div className="absolute top-10 right-10 w-12 h-12 border-4 border-slate-700 rounded-full opacity-20">
+      <div className="absolute top-10 right-6 sm:right-10 w-8 sm:w-12 h-8 sm:h-12 border-2 sm:border-4 border-slate-700 rounded-full opacity-20 hidden sm:block">
         <div className="w-full h-full bg-slate-800 rounded-full flex items-center justify-center">
-          <div className="w-2 h-2 bg-slate-600 rounded-full"></div>
+          <div className="w-1 sm:w-2 h-1 sm:h-2 bg-slate-600 rounded-full"></div>
         </div>
       </div>
       
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <div className="flex items-center justify-center space-x-4 mb-4">
-            <Camera className="w-8 h-8 text-slate-400" />
-            <div className="w-16 h-px bg-slate-600"></div>
-            <Award className="w-8 h-8 text-slate-400" />
-            <div className="w-16 h-px bg-slate-600"></div>
-            <Camera className="w-8 h-8 text-slate-400" />
+        <div className="text-center mb-8 sm:mb-12">
+          <div className="flex items-center justify-center space-x-2 sm:space-x-4 mb-3 sm:mb-4">
+            <Camera className="w-6 h-6 sm:w-8 sm:h-8 text-slate-400" />
+            <div className="w-10 sm:w-16 h-px bg-slate-600"></div>
+            <Award className="w-6 h-6 sm:w-8 sm:h-8 text-slate-400" />
+            <div className="w-10 sm:w-16 h-px bg-slate-600"></div>
+            <Camera className="w-6 h-6 sm:w-8 sm:h-8 text-slate-400" />
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 uppercase tracking-wider">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 sm:mb-4 uppercase tracking-wider">
             Спикеры
           </h2>
-          <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+          <p className="text-slate-400 text-base sm:text-lg max-w-2xl mx-auto px-2">
             Профессиональные биографии и опыт ведущих специалистов в области ИИ и автоматизации бизнес процессов
           </p>
         
@@ -188,13 +188,13 @@ export const SpeakersSection: React.FC<SpeakersSectionProps> = ({ speakers: spea
             <p className="text-slate-500 text-lg uppercase tracking-wider">В РАЗРАБОТКЕ</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 max-w-4xl mx-auto px-1 sm:px-0">
             {!isLoading && !error && localSpeakers.map((speaker) => (
               <div
                 key={speaker.id}
                 className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden"
               >
-                <div className="p-10">
+                <div className="p-6 sm:p-8 md:p-10">
                   <div className="text-center mb-6">
                     <div className="relative inline-block">
                       <div className="w-32 h-32 mx-auto mb-6 rounded-full overflow-hidden bg-slate-700 border-2 border-slate-600">
