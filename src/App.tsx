@@ -22,10 +22,7 @@ function App() {
 
   const handleAdminLogin = () => {
     // Временно пропускаем авторизацию и сразу входим в админ-панель
-    const credentials = { username: 'EMDLabs', password: 'EMD2025' };
-    login(credentials);
-    setShowAdminPanel(true);
-    // setShowAuthModal(true); // Закомментировано для пропуска авторизации
+    setShowAuthModal(true);
   };
 
   const handleAuthSuccess = (credentials: { username: string; password: string }) => {
