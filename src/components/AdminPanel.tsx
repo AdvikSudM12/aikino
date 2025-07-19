@@ -593,21 +593,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Функция для загрузки спикеров из Supabase
   const loadSpeakersFromDb = async () => {
     try {
+      console.log('Загружаем актуальные данные спикеров из базы данных...');
       const speakersData = await fetchAllSpeakers();
       
+      // Всегда обновляем состояние из базы данных для обеспечения синхронизации между браузерами
+      setSpeakers(speakersData || []);
+      
       if (speakersData && speakersData.length > 0) {
-        // Проверяем, отличаются ли данные из базы от текущего состояния
-        const needsUpdate = JSON.stringify(speakersData.sort((a, b) => a.id.localeCompare(b.id))) !== 
-                            JSON.stringify(speakers.sort((a, b) => a.id.localeCompare(b.id)));
-        
-        if (needsUpdate) {
-          console.log('Обновляем состояние спикеров из базы данных');
-          setSpeakers(speakersData);
-        }
-        
         console.log(`Загружены спикеры из базы данных: ${speakersData.length}`);
       } else {
         console.log('В базе данных нет спикеров');
+        if (speakers.length > 0) {
+          console.log('Очищаем локальное состояние спикеров');
+        }
       }
     } catch (error) {
       console.error('Ошибка при загрузке спикеров из базы данных:', error);
