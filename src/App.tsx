@@ -6,6 +6,7 @@ import { SpeakersSection } from './components/SpeakersSection';
 import { SurveySection } from './components/SurveySection';
 import { AdminPanel } from './components/AdminPanel';
 import { AuthModal } from './components/AuthModal';
+import { Footer } from './components/Footer';
 import { useAuth } from './hooks/useAuth';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { MediaItem, Speaker, SurveyResponse } from './types';
@@ -97,6 +98,7 @@ function App() {
           }}
         />
       </main>
+      <Footer />
 
       {showAuthModal && (
         <AuthModal
