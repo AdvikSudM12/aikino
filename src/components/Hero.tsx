@@ -57,7 +57,7 @@ export const Hero: React.FC = () => {
           </p>
           
           <div className="text-center mt-8 sm:mt-12 mb-8 sm:mb-16">
-            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-8 sm:mb-12">Мы EMD</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-8 sm:mb-12">EMD</h2>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8">
               <a href="https://www.emd.one/" target="_blank" rel="noopener noreferrer" className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden hover:bg-slate-800 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer">
