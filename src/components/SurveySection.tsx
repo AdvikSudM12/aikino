@@ -133,12 +133,13 @@ export const SurveySection: React.FC<SurveySectionProps> = ({ onSubmit }) => {
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Обратная связь</h2>
           <div className="bg-slate-800/50 rounded-2xl p-8 border border-slate-700">
-            <p className="text-slate-300 leading-relaxed">
-              Добрый день! Спасибо за ваш интерес к теме ИИ в кино. 
-              Если вы посетили наш вебинар, поделитесь мнением: как было и что можно улучшить? 
-              Если пропустили, но хотите погрузиться в инструменты ИИ, заполните анкету, 
-              оставьте комментарии и пожелания. Мы свяжемся, если у вас будут вопросы.
-            </p>
+            <div className="text-slate-300 leading-relaxed text-left">
+              <p className="mb-4">Добрый день!</p>
+              <p className="mb-4">Спасибо за ваш интерес к теме ИИ в Кино.</p>
+              <p className="mb-4">Если вам удалось посетить наш вебинар, поделитесь мнением, что можно сделать лучше.</p>
+              <p className="mb-4">Если вы пропустили, но у вас есть вопросы или интерес в погружение инструментов для работы с ИИ, пожалуйста, заполните анкету, оставьте свои комментарии и пожелания.</p>
+              <p>Если у вас остались вопросы, мы с вам свяжемся.</p>
+            </div>
           </div>
         </div>
 
