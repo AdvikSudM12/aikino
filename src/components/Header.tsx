@@ -12,9 +12,9 @@ export const Header: React.FC<HeaderProps> = ({ activeSection, onNavigate, onAdm
   
   const navigationItems = [
     { id: 'hero', label: 'ГЛАВНАЯ', icon: Film },
-    { id: 'speakers', label: 'Спикеры', icon: Mic },
+    { id: 'speakers', label: 'СПИКЕРЫ', icon: Mic },
     { id: 'media', label: 'МЕДИА', icon: Video },
-    { id: 'survey', label: 'Обратная связь', icon: Clapperboard }
+    { id: 'survey', label: 'ОБРАТНАЯ СВЯЗЬ', icon: Clapperboard }
   ];
 
   const handleMobileNavigation = (sectionId: string) => {
