@@ -112,7 +112,7 @@ export const MediaSection: React.FC<MediaSectionProps> = ({ mediaItems: propMedi
   const tabs = [
     { id: 'photo' as const, label: 'КАДРЫ', icon: Camera },
     { id: 'video' as const, label: 'ВИДЕО', icon: Video },
-    { id: 'presentation' as const, label: 'СЦЕНАРИИ', icon: FileText }
+    { id: 'presentation' as const, label: 'ПРЕЗЕНТАЦИЯ', icon: FileText }
   ];
 
   // Предварительно загружаем все фотографии независимо от активной вкладки
