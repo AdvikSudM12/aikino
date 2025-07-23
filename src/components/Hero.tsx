@@ -62,9 +62,7 @@ export const Hero: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8">
               <a href="https://www.emd.one/" target="_blank" rel="noopener noreferrer" className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden hover:bg-slate-800 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer">
                 <div className="p-8">
-                  <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-700">
-                    <span className="text-2xl font-bold text-slate-300">L</span>
-                  </div>
+
                   <h3 className="text-xl font-semibold text-white mb-4 uppercase tracking-wide">EMD Labs</h3>
                   <p className="text-slate-400 leading-relaxed">
                     Создаем продукты
@@ -74,9 +72,7 @@ export const Hero: React.FC = () => {
 
               <a href="https://cloud.emd.one/" target="_blank" rel="noopener noreferrer" className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden hover:bg-slate-800 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer">
                 <div className="p-8">
-                  <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-700">
-                    <span className="text-2xl font-bold text-slate-300">C</span>
-                  </div>
+
                   <h3 className="text-xl font-semibold text-white mb-4 uppercase tracking-wide">EMD Cloud</h3>
                   <p className="text-slate-400 leading-relaxed">
                     Автоматизируем процессы
@@ -86,9 +82,7 @@ export const Hero: React.FC = () => {
 
               <div className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden hover:bg-slate-800 transition-all duration-300 transform hover:-translate-y-1">
                 <div className="p-8">
-                  <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-700">
-                    <span className="text-2xl font-bold text-slate-300">E</span>
-                  </div>
+
                   <h3 className="text-xl font-semibold text-white mb-4 uppercase tracking-wide">EMD Education</h3>
                   <p className="text-slate-400 leading-relaxed">
                     Обучаем пользоваться
