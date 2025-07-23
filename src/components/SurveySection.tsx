@@ -61,7 +61,7 @@ export const SurveySection: React.FC<SurveySectionProps> = ({ onSubmit }) => {
         occupation: surveyData.occupation,
         materialUseful: surveyData.materialUseful as 'yes' | 'no' | 'unknown',
         recommendation: surveyData.recommendation as 'definitely' | 'probably' | 'unknown' | 'probably-not' | 'definitely-not',
-        aiExperience: surveyData.aiExperience as 'nothing' | 'reading' | 'team-using',
+        aiExperience: surveyData.aiExperience as 'nothing' | 'reading' | 'team-using' | 'attempts',
         companyName: surveyData.companyName,
         missingInfo: surveyData.missingInfo,
         aiServices: surveyData.aiServices,
@@ -269,7 +269,8 @@ export const SurveySection: React.FC<SurveySectionProps> = ({ onSubmit }) => {
                   {[
                     { value: 'nothing', label: 'Ничего не знаю' },
                     { value: 'reading', label: 'Читаю про ИИ, но не пользовался' },
-                    { value: 'team-using', label: 'Моя команда активно использует ИИ' }
+                    { value: 'team-using', label: 'Я и моя команда активно используем ИИ в своей работе' },
+                    { value: 'attempts', label: 'были попытки, но это ожидаемого эффекта не дало' }
                   ].map((option) => (
                     <label key={option.value} className="flex items-center space-x-3 cursor-pointer">
                       <input
@@ -294,7 +295,7 @@ export const SurveySection: React.FC<SurveySectionProps> = ({ onSubmit }) => {
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-3">
-                  Недостающая информация
+                  Какой информации вам не хватило, какой материал вы бы хотели изучить поглубже?
                 </label>
                 <div className="space-y-3">
                   <label className="flex items-center space-x-3 cursor-pointer">

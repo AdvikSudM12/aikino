@@ -535,7 +535,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const labels = {
       'nothing': 'Ничего не знаю',
       'reading': 'Читаю про ИИ, но не пользовался',
-      'team-using': 'Моя команда активно использует ИИ'
+      'team-using': 'Я и моя команда активно используем ИИ в своей работе',
+      'attempts': 'были попытки, но это ожидаемого эффекта не дало'
     };
     return labels[value as keyof typeof labels] || value;
   };

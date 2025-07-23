@@ -29,7 +29,7 @@ export interface SurveyResponse {
   occupation: string;
   materialUseful: 'yes' | 'no' | 'unknown';
   recommendation: 'definitely' | 'probably' | 'unknown' | 'probably-not' | 'definitely-not';
-  aiExperience: 'nothing' | 'reading' | 'team-using';
+  aiExperience: 'nothing' | 'reading' | 'team-using' | 'attempts';
   companyName?: string;
   missingInfo?: {
     enough: boolean;
